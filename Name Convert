@@ -33,9 +33,11 @@ function createConverter() {
         const newFileNameMap = new Map();
         newFileNames.forEach(newFileName => {
             const parts = newFileName.split('\t'); // Split by tab
-            const id = parts[1].trim(); // Extract ID (second column)
-            const fileName = parts[0].trim(); // Extract file name (first column)
-            newFileNameMap.set(id, fileName);
+            if (parts.length >= 2) { // Ensure there are at least two columns
+                const id = parts[1].trim(); // Extract ID (second column)
+                const fileName = parts[0].trim(); // Extract file name (first column)
+                newFileNameMap.set(id, fileName);
+            }
         });
 
         // Replace old file names with new file names based on matching IDs
