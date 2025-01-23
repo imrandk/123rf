@@ -1,7 +1,73 @@
+// Helper function to create a button
+function createButton(document, text, bgColor, onClick) {
+    const button = document.createElement('button');
+    button.textContent = text;
+    button.style = `margin: 10px; padding: 10px 20px; border: none; border-radius: 5px; background: ${bgColor}; color: #fff; font-size: 16px; cursor: pointer;`;
+    button.onclick = onClick;
+    return button;
+}
+
+// Helper function to create a textarea
+function createTextArea(document, placeholder, borderColor, height) {
+    const textarea = document.createElement('textarea');
+    textarea.style = `width: 300px; height: ${height}; margin: 10px; padding: 10px; border: 2px solid ${borderColor}; border-radius: 5px; font-size: 16px;`;
+    textarea.placeholder = placeholder;
+    return textarea;
+}
+
+// Helper function to create a textarea with a copy button
+function createTextAreaWithCopy(document, placeholder, borderColor, height) {
+    const container = document.createElement('div');
+    container.style = `position: relative; width: 300px; margin: 10px;`;
+
+    const textarea = createTextArea(document, placeholder, borderColor, height);
+    const copyButton = document.createElement('button');
+    copyButton.textContent = 'Copy';
+    copyButton.style = `position: absolute; top: 10px; right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: ${borderColor}; color: #fff; font-size: 12px; cursor: pointer;`;
+    copyButton.onclick = () => copyText(textarea, document);
+
+    container.append(textarea, copyButton);
+    return container;
+}
+
+// Helper function to copy text from a textarea using Clipboard API
+function copyText(textarea, document) {
+    textarea.focus(); // Focus the textarea
+    textarea.select(); // Select the text
+
+    // Ensure the document is focused
+    if (document.hasFocus()) {
+        navigator.clipboard.writeText(textarea.value)
+            .catch(() => {
+                // Fallback to execCommand if Clipboard API fails
+                document.execCommand('copy');
+            });
+    } else {
+        // Fallback to execCommand if the document is not focused
+        document.execCommand('copy');
+    }
+}
+
+// Helper function to truncate titles while preserving whole words
+function truncateTitle(title, maxLength) {
+    if (title.length <= maxLength) return title;
+
+    // Truncate to the last space within the limit
+    let truncatedTitle = title.substring(0, maxLength);
+    const lastSpaceIndex = truncatedTitle.lastIndexOf(' ');
+
+    if (lastSpaceIndex !== -1) {
+        truncatedTitle = truncatedTitle.substring(0, lastSpaceIndex);
+    }
+
+    return truncatedTitle;
+}
+
+// Main function to create the converter UI
 function createConverter() {
     // Open a new window and store its reference
     const newWindow = window.open('', '_blank', 'width=800,height=600,top=100,left=100');
-    
+
     // Ensure the new window is focused
     if (newWindow) {
         newWindow.focus();
@@ -53,6 +119,14 @@ function createConverter() {
                     replacedCount++;
                     return `File Name: ${newFileName}`;
                 }
+            } else if (oldTitle.trim().startsWith('Title: ')) {
+                // Handle titles exceeding 90 characters
+                let title = oldTitle.replace('Title: ', '').trim();
+                if (title.length > 90) {
+                    // Truncate the title to 90 characters, preserving whole words
+                    title = truncateTitle(title, 90);
+                }
+                return `Title: ${title}`;
             }
             return oldTitle; // Keep non-file name lines or unmatched file names unchanged
         }).join('\n');
@@ -91,56 +165,6 @@ function createConverter() {
     container.append(leftContainer, rightContainer);
     newWindow.document.body.append(container);
     newWindow.document.body.style = `background: #f0f0f0; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh;`;
-}
-
-// Helper function to create a textarea
-function createTextArea(document, placeholder, borderColor, height) {
-    const textarea = document.createElement('textarea');
-    textarea.style = `width: 300px; height: ${height}; margin: 10px; padding: 10px; border: 2px solid ${borderColor}; border-radius: 5px; font-size: 16px;`;
-    textarea.placeholder = placeholder;
-    return textarea;
-}
-
-// Helper function to create a textarea with a copy button
-function createTextAreaWithCopy(document, placeholder, borderColor, height) {
-    const container = document.createElement('div');
-    container.style = `position: relative; width: 300px; margin: 10px;`;
-
-    const textarea = createTextArea(document, placeholder, borderColor, height);
-    const copyButton = document.createElement('button');
-    copyButton.textContent = 'Copy';
-    copyButton.style = `position: absolute; top: 10px; right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: ${borderColor}; color: #fff; font-size: 12px; cursor: pointer;`;
-    copyButton.onclick = () => copyText(textarea, document);
-
-    container.append(textarea, copyButton);
-    return container;
-}
-
-// Helper function to create a button
-function createButton(document, text, bgColor, onClick) {
-    const button = document.createElement('button');
-    button.textContent = text;
-    button.style = `margin: 10px; padding: 10px 20px; border: none; border-radius: 5px; background: ${bgColor}; color: #fff; font-size: 16px; cursor: pointer;`;
-    button.onclick = onClick;
-    return button;
-}
-
-// Helper function to copy text from a textarea using Clipboard API
-function copyText(textarea, document) {
-    textarea.focus(); // Focus the textarea
-    textarea.select(); // Select the text
-
-    // Ensure the document is focused
-    if (document.hasFocus()) {
-        navigator.clipboard.writeText(textarea.value)
-            .catch(() => {
-                // Fallback to execCommand if Clipboard API fails
-                document.execCommand('copy');
-            });
-    } else {
-        // Fallback to execCommand if the document is not focused
-        document.execCommand('copy');
-    }
 }
 
 // Call the function to create the converter
