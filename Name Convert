@@ -34,7 +34,7 @@ function createConverter() {
         newFileNames.forEach(newFileName => {
             const parts = newFileName.split('\t'); // Split by tab
             const id = parts[1].trim(); // Extract ID (second column)
-            const fileName = parts[0].trim().split('.')[0]; // Extract file name (first column) and remove extension
+            const fileName = parts[0].trim(); // Extract file name (first column)
             newFileNameMap.set(id, fileName);
         });
 
