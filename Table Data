@@ -1,200 +1,99 @@
-// Global variables to store collected data and control the process
 let collectedData = [];
 let isCollecting = false;
 let observer;
 
-// Function to collect table data
 function collectTableData() {
     const tableBody = document.querySelector('#upload-queue-table-body');
-    
-    if (!tableBody) {
-        console.log('Table body not found! Waiting for the table...');
-        return;
-    }
-    
+    if (!tableBody) return;
+
     tableBody.querySelectorAll('tr').forEach(row => {
-        let rowData = [];
-        row.querySelectorAll('td').forEach(cell => {
-            rowData.push(cell.textContent.trim());
-        });
-        // Join the row data with a single space to make it a complete line
-        collectedData.push(rowData.join(' '));
+        const rowData = Array.from(row.querySelectorAll('td')).map(cell => cell.textContent.trim()).join(' ');
+        if (!collectedData.includes(rowData)) collectedData.push(rowData);
     });
 }
 
-// Function to start observing the DOM for the table
 function startObserving() {
-    const targetNode = document.body; // Observe the entire body for changes
-
-    // Configuration for the observer (watch for child node changes)
-    const config = { childList: true, subtree: true };
-
-    // Callback function to execute when mutations are observed
-    const callback = function (mutationsList, observer) {
-        for (const mutation of mutationsList) {
-            if (mutation.type === 'childList') {
-                const tableBody = document.querySelector('#upload-queue-table-body');
-                if (tableBody && isCollecting) {
-                    collectTableData(); // Collect data if the table is found
-                }
-            }
-        }
-    };
-
-    // Create an observer instance linked to the callback function
-    observer = new MutationObserver(callback);
-
-    // Start observing the target node for configured mutations
-    observer.observe(targetNode, config);
+    observer = new MutationObserver(() => {
+        const tableBody = document.querySelector('#upload-queue-table-body');
+        if (tableBody && isCollecting) collectTableData();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
 }
 
-// Function to start collecting data
 function startCollecting() {
-    if (isCollecting) {
-        console.log('Data collection is already running!');
-        return;
-    }
-
+    if (isCollecting) return;
     isCollecting = true;
-    collectedData = []; // Reset collected data
-    console.log('Data collection started. The script will automatically collect data when the table is found.');
-
-    // Start observing the DOM for the table
+    collectedData = [];
     startObserving();
-
-    // Collect data immediately if the table is already present
     collectTableData();
 }
 
-// Function to stop collecting data and display it
 function stopCollecting() {
     isCollecting = false;
-    if (observer) {
-        observer.disconnect(); // Stop observing the DOM
-    }
-
-    // Display the collected data in a box
+    if (observer) observer.disconnect();
     displayCollectedData();
 }
 
-// Function to display collected data in a box
 function displayCollectedData() {
-    // Create a container for the box
     const container = document.createElement('div');
-    container.id = 'data-container'; // Unique ID for the container
-    container.style.position = 'fixed';
-    container.style.top = '60px'; // Adjusted to avoid overlapping with buttons
-    container.style.left = '50%'; // Center the box horizontally
-    container.style.transform = 'translateX(-50%)'; // Adjust for exact centering
-    container.style.width = '80%';
-    container.style.maxWidth = '600px';
-    container.style.backgroundColor = '#fff';
-    container.style.padding = '20px';
-    container.style.border = '2px solid #007BFF';
-    container.style.borderRadius = '10px';
-    container.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
-    container.style.zIndex = '1000'; // Lower z-index than buttons
-    container.style.overflowY = 'scroll';
-    container.style.maxHeight = '80vh';
-
-    // Create a textarea to display the data
-    const textarea = document.createElement('textarea');
-    textarea.value = collectedData.join('\n'); // Join lines with newline
-    textarea.style.width = '100%';
-    textarea.style.height = '200px';
-    textarea.style.marginTop = '10px';
-    textarea.style.padding = '10px';
-    textarea.style.fontSize = '16px';
-    textarea.style.border = '2px solid #007BFF';
-    textarea.style.borderRadius = '5px';
-    textarea.style.boxSizing = 'border-box';
-
-    // Add the textarea to the container
-    container.appendChild(textarea);
-
-    // Create a copy button
-    const copyButton = document.createElement('button');
-    copyButton.textContent = 'Copy';
-    copyButton.style.marginTop = '10px';
-    copyButton.style.padding = '10px 20px';
-    copyButton.style.backgroundColor = '#007BFF';
-    copyButton.style.color = '#fff';
-    copyButton.style.border = 'none';
-    copyButton.style.borderRadius = '5px';
-    copyButton.style.cursor = 'pointer';
-
-    // Add click event listener to the copy button
-    copyButton.addEventListener('click', () => {
-        // Copy the data to the clipboard
-        navigator.clipboard.writeText(textarea.value).then(() => {
-            console.log('Data copied to clipboard successfully!');
-            // Close the box after copying
-            document.body.removeChild(container);
-        }).catch(err => {
-            console.error('Failed to copy data to clipboard:', err);
-        });
+    container.id = 'data-container';
+    Object.assign(container.style, {
+        position: 'fixed', top: '60px', left: '50%', transform: 'translateX(-50%)', width: '80%', maxWidth: '600px',
+        backgroundColor: '#fff', padding: '20px', border: '2px solid #007BFF', borderRadius: '10px',
+        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)', zIndex: '1000', overflowY: 'scroll', maxHeight: '80vh'
     });
 
-    // Add the copy button to the container
+    const textarea = document.createElement('textarea');
+    textarea.value = collectedData.join('\n');
+    Object.assign(textarea.style, {
+        width: '100%', height: '200px', marginTop: '10px', padding: '10px', fontSize: '16px',
+        border: '2px solid #007BFF', borderRadius: '5px', boxSizing: 'border-box'
+    });
+    container.appendChild(textarea);
+
+    const copyButton = document.createElement('button');
+    copyButton.textContent = 'Copy';
+    Object.assign(copyButton.style, {
+        marginTop: '10px', padding: '10px 20px', backgroundColor: '#007BFF', color: '#fff',
+        border: 'none', borderRadius: '5px', cursor: 'pointer'
+    });
+    copyButton.addEventListener('click', () => {
+        navigator.clipboard.writeText(textarea.value).then(() => document.body.removeChild(container));
+    });
     container.appendChild(copyButton);
 
-    // Display the number of lines collected
     const lineCount = document.createElement('p');
     lineCount.textContent = `Total lines collected: ${collectedData.length}`;
-    lineCount.style.marginTop = '10px';
-    lineCount.style.fontSize = '14px';
-    lineCount.style.color = '#333';
+    Object.assign(lineCount.style, { marginTop: '10px', fontSize: '14px', color: '#333' });
     container.appendChild(lineCount);
 
-    // Append the container to the body
     document.body.appendChild(container);
 }
 
-// Create a control panel with buttons
 const controlPanel = document.createElement('div');
-controlPanel.id = 'control-panel'; // Unique ID for the control panel
-controlPanel.style.position = 'fixed';
-controlPanel.style.top = '10px'; // Position at the top
-controlPanel.style.left = '50%'; // Center horizontally
-controlPanel.style.transform = 'translateX(-50%)'; // Adjust for exact centering
-controlPanel.style.backgroundColor = '#fff';
-controlPanel.style.padding = '10px';
-controlPanel.style.border = '1px solid #ccc';
-controlPanel.style.borderRadius = '5px';
-controlPanel.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
-controlPanel.style.zIndex = '1001'; // Higher z-index to ensure it stays on top
-controlPanel.style.display = 'flex';
-controlPanel.style.gap = '10px';
+controlPanel.id = 'control-panel';
+Object.assign(controlPanel.style, {
+    position: 'fixed', top: '10px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#fff',
+    padding: '10px', border: '1px solid #ccc', borderRadius: '5px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
+    zIndex: '1001', display: 'flex', gap: '10px'
+});
 
-// Create a start button
 const startButton = document.createElement('button');
 startButton.textContent = 'Start Collecting';
-startButton.style.padding = '10px 20px';
-startButton.style.backgroundColor = '#28a745';
-startButton.style.color = '#fff';
-startButton.style.border = 'none';
-startButton.style.borderRadius = '5px';
-startButton.style.cursor = 'pointer';
-
-// Add click event listener to the start button
+Object.assign(startButton.style, {
+    padding: '10px 20px', backgroundColor: '#28a745', color: '#fff', border: 'none',
+    borderRadius: '5px', cursor: 'pointer'
+});
 startButton.addEventListener('click', startCollecting);
 
-// Create a stop button
 const stopButton = document.createElement('button');
 stopButton.textContent = 'Stop and Show Data';
-stopButton.style.padding = '10px 20px';
-stopButton.style.backgroundColor = '#dc3545';
-stopButton.style.color = '#fff';
-stopButton.style.border = 'none';
-stopButton.style.borderRadius = '5px';
-stopButton.style.cursor = 'pointer';
-
-// Add click event listener to the stop button
+Object.assign(stopButton.style, {
+    padding: '10px 20px', backgroundColor: '#dc3545', color: '#fff', border: 'none',
+    borderRadius: '5px', cursor: 'pointer'
+});
 stopButton.addEventListener('click', stopCollecting);
 
-// Add buttons to the control panel
 controlPanel.appendChild(startButton);
 controlPanel.appendChild(stopButton);
-
-// Append the control panel to the body
 document.body.appendChild(controlPanel);
