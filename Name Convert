@@ -15,31 +15,18 @@ function createTextArea(document, placeholder, borderColor, height) {
     return textarea;
 }
 
-// Helper function to create a textarea with a copy button
-function createTextAreaWithCopy(document, placeholder, borderColor, height) {
-    const container = document.createElement('div');
-    container.style = `position: relative; width: 300px; margin: 10px;`;
-
-    const textarea = createTextArea(document, placeholder, borderColor, height);
-    const copyButton = document.createElement('button');
-    copyButton.textContent = 'Copy';
-    copyButton.style = `position: absolute; top: 10px; right: 10px; padding: 5px 10px; border: none; border-radius: 5px; background: ${borderColor}; color: #fff; font-size: 12px; cursor: pointer;`;
-    copyButton.onclick = () => {
-        textarea.focus();
-        textarea.select();
-        navigator.clipboard.writeText(textarea.value).catch(() => document.execCommand('copy'));
-    };
-
-    container.append(textarea, copyButton);
-    return container;
+// Function to extract ID from file name
+function extractID(fileName) {
+    const match = fileName.match(/imrandk\d+/);
+    return match ? match[0] : null;
 }
 
-// Helper function to truncate titles while preserving whole words
-function truncateTitle(title, maxLength) {
-    if (title.length <= maxLength) return title;
-    const truncatedTitle = title.substring(0, maxLength);
-    const lastSpaceIndex = truncatedTitle.lastIndexOf(' ');
-    return lastSpaceIndex !== -1 ? truncatedTitle.substring(0, lastSpaceIndex) : truncatedTitle;
+// Function to trim text to a maximum length while preserving whole words
+function trimToMaxLength(text, maxLength) {
+    if (text.length <= maxLength) return text; // If text is already within limit, return as is
+    let trimmedText = text.substring(0, maxLength); // Trim to max length
+    trimmedText = trimmedText.substring(0, Math.min(trimmedText.length, trimmedText.lastIndexOf(" "))); // Trim to last space
+    return trimmedText;
 }
 
 // Main function to create the converter UI
@@ -48,46 +35,38 @@ function createConverter() {
     if (!newWindow) return;
 
     const container = newWindow.document.createElement('div');
-    container.style = `position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; align-items: flex-start; background: #f9f9f9; padding: 20px; border: 1px solid #ccc; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);`;
+    container.style = `display: flex; justify-content: space-around; padding: 20px;`;
 
-    // Left Container (New Titles, Old Titles, Convert Button)
+    // Left Container (New and Old File Names, Convert Button)
     const leftContainer = newWindow.document.createElement('div');
-    leftContainer.style = `display: flex; flex-direction: column; align-items: center;`;
-
-    const newTitlesBox = createTextArea(newWindow.document, 'Enter new file names here (one per line)...', '#007bff', '150px');
-    const oldTitlesBox = createTextAreaWithCopy(newWindow.document, 'Enter old titles here (one per line)...', '#28a745', '150px');
-
+    const newTitlesBox = createTextArea(newWindow.document, 'Enter new file names here...', '#007bff', '150px');
+    const oldTitlesBox = createTextArea(newWindow.document, 'Enter old file names here...', '#28a745', '150px');
+    
     const countDisplay = newWindow.document.createElement('div');
     countDisplay.style = `margin: 10px; font-size: 14px; color: #333; text-align: center;`;
     countDisplay.textContent = 'Results will appear here after conversion.';
 
     const convertButton = createButton(newWindow.document, 'Convert', '#007bff', () => {
-        const newFileNames = newTitlesBox.value.trim().split('\n').filter(name => name.trim() !== '');
-        const oldTitles = oldTitlesBox.querySelector('textarea').value.split('\n');
+        const newFileNames = newTitlesBox.value.trim().split('\n').map(name => name.trim()).filter(name => name !== '');
+        const oldTitles = oldTitlesBox.value.split('\n');
 
         const newFileNameMap = new Map();
         newFileNames.forEach(newFileName => {
-            const idMatch = newFileName.match(/imrandk\d+/);
-            if (idMatch) {
-                const id = idMatch[0];
-                const fileName = newFileName.split(id)[0].trim();
-                newFileNameMap.set(id, fileName);
+            const id = extractID(newFileName);
+            if (id) {
+                newFileNameMap.set(id, newFileName.split(id)[0].trim());
             }
         });
 
         let replacedCount = 0;
-        oldTitlesBox.querySelector('textarea').value = oldTitles.map(oldTitle => {
-            if (oldTitle.trim().startsWith('File Name: ')) {
+        oldTitlesBox.value = oldTitles.map(oldTitle => {
+            if (oldTitle.startsWith('File Name: ')) {
                 const oldFileName = oldTitle.replace('File Name: ', '').trim();
-                const oldId = oldFileName;
-                if (newFileNameMap.has(oldId)) {
+                const oldId = extractID(oldFileName);
+                if (oldId && newFileNameMap.has(oldId)) {
                     replacedCount++;
                     return `File Name: ${newFileNameMap.get(oldId)}`;
                 }
-            } else if (oldTitle.trim().startsWith('Title: ')) {
-                let title = oldTitle.replace('Title: ', '').trim();
-                if (title.length > 90) title = truncateTitle(title, 90);
-                return `Title: ${title}`;
             }
             return oldTitle;
         }).join('\n');
@@ -95,33 +74,37 @@ function createConverter() {
         countDisplay.textContent = `New File Names Found: ${newFileNames.length}, File Names Replaced: ${replacedCount}`;
     });
 
-    leftContainer.append(newTitlesBox, oldTitlesBox, convertButton, countDisplay);
-
-    // Right Container (Cleaned Titles, Clean Button)
+    // Right Container (Title Trimming)
     const rightContainer = newWindow.document.createElement('div');
-    rightContainer.style = `display: flex; flex-direction: column; align-items: center;`;
+    const titlesBox = createTextArea(newWindow.document, 'Enter titles here...', '#ffc107', '150px');
+    const trimResultDisplay = newWindow.document.createElement('div');
+    trimResultDisplay.style = `margin: 10px; font-size: 14px; color: #333; text-align: center;`;
+    trimResultDisplay.textContent = 'Trimmed results will appear here.';
 
-    const cleanedTitlesBox = createTextAreaWithCopy(newWindow.document, 'Cleaned titles will appear here...', '#dc3545', '320px');
+    const trimButton = createButton(newWindow.document, 'Trim Titles', '#ffc107', () => {
+        const titles = titlesBox.value.split('\n');
+        const titleLines = titles.filter(line => line.startsWith('Title: ')); // Filter only lines starting with "Title: "
+        let totalTitles = titleLines.length;
+        let trimmedCount = 0;
 
-    const cleanCountDisplay = newWindow.document.createElement('div');
-    cleanCountDisplay.style = `margin: 10px; font-size: 14px; color: #333; text-align: center;`;
-    cleanCountDisplay.textContent = 'Cleaned titles count will appear here.';
+        titlesBox.value = titles.map(title => {
+            if (title.startsWith('Title: ')) {
+                const titleText = title.replace('Title: ', '').trim();
+                if (titleText.length > 90) {
+                    trimmedCount++;
+                    return `Title: ${trimToMaxLength(titleText, 90)}`; // Trim to 90 characters, preserving whole words
+                }
+            }
+            return title;
+        }).join('\n');
 
-    const cleanButton = createButton(newWindow.document, 'Clean Titles', '#dc3545', () => {
-        const cleanedTitles = cleanedTitlesBox.querySelector('textarea').value.split('\n')
-            .filter(line => line.trim().startsWith('File Name: '))
-            .map(line => line.replace('File Name: ', ''));
-
-        cleanedTitlesBox.querySelector('textarea').value = cleanedTitles.join('\n\n');
-        cleanCountDisplay.textContent = `Titles Cleaned: ${cleanedTitles.length}`;
+        trimResultDisplay.textContent = `Total Titles: ${totalTitles}, Titles Trimmed: ${trimmedCount}`;
     });
 
-    rightContainer.append(cleanedTitlesBox, cleanButton, cleanCountDisplay);
-
-    // Append to Main Container and Body
+    rightContainer.append(titlesBox, trimButton, trimResultDisplay);
+    leftContainer.append(newTitlesBox, oldTitlesBox, convertButton, countDisplay);
     container.append(leftContainer, rightContainer);
     newWindow.document.body.append(container);
-    newWindow.document.body.style = `background: #f0f0f0; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh;`;
 }
 
 // Call the function to create the converter
